@@ -232,7 +232,7 @@ async function cargarDatos(fechaDDMMYYYY, sinCache, mesPace){
     // Si no se pidió una fecha concreta, el backend ha usado el último snapshot real
     // disponible — reflejamos esa fecha en el selector, en vez de dejar la de "hoy"
     // (que casi nunca coincide con un pick-up real).
-    if(!fechaDDMMYYYY && data.snapshotUsado2026){
+    if(data.snapshotUsado2026){
       document.getElementById('fechaSnapshot').value = fmtDDMMYYYYtoInput(data.snapshotUsado2026);
     }
     render(data);
@@ -829,7 +829,7 @@ function renderPaceChart(curve){
 document.getElementById('btnActualizar').addEventListener('click', () => {
   const v = document.getElementById('fechaSnapshot').value;
   const sinCache = document.getElementById('chkNoCache').checked;
-  if(v) cargarDatos(inputToDDMMYYYY(v), sinCache);
+  cargarDatos(v ? inputToDDMMYYYY(v) : null, sinCache);
 });
 
 const sesionInicial = obtenerCodigoValido_();
