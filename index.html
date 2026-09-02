@@ -840,6 +840,33 @@ if(sesionInicial.codigo){
 } else {
   mostrarLogin(sesionInicial.caducado ? 'Tu sesión ha caducado por tiempo de inactividad. Introduce el código de nuevo.' : '');
 }
+
+async function cargarInformesDisponibles(codigo){
+  try{
+    const qs = new URLSearchParams();
+    qs.set('codigo', codigo);
+    qs.set('accion', 'listaInformes');
+    const res = await fetch(PROXY_URL + '?' + qs.toString());
+    const data = await res.json();
+    if(!data || !data.ok || !Array.isArray(data.informes) || data.informes.length === 0) return;
+    const informes = data.informes.slice().sort((a, b) => {
+      const fa = new Date(a.fechaPublicacion || 0), fb = new Date(b.fechaPublicacion || 0);
+      return fb - fa;
+    });
+    const sel = document.getElementById('selInforme');
+    sel.innerHTML = informes.map((inf, i) =>
+      `<option value="${inf.url}">${inf.mes} ${inf.anio}${i === 0 ? ' (más reciente)' : ''}</option>`
+    ).join('');
+    document.getElementById('downloadsBox').classList.add('visible');
+  }catch(e){
+    console.warn('No se pudo cargar la lista de informes descargables:', e);
+  }
+}
+
+document.getElementById('btnDescargar').addEventListener('click', () => {
+  const sel = document.getElementById('selInforme');
+  if(sel.value) window.open(sel.value, '_blank');
+});
 </script>
 </body>
 </html>
