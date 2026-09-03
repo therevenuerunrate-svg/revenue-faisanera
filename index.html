@@ -378,7 +378,7 @@ function render(data){
   renderSelectorMesPace(data.mesPaceSeleccionado);
   renderPaceChartFaisanera(data.paceCurve);
   renderAntelacion(data.antelacionMedia);
-  renderPresupuesto(data.presupuesto2026);
+  renderPresupuesto(buildPresupuestoMeses(data.comparativaMensual, data.presupuesto2026));
 }
 
 function renderAntelacion(meses){
@@ -867,6 +867,72 @@ document.getElementById('btnDescargar').addEventListener('click', () => {
   const sel = document.getElementById('selInforme');
   if(sel.value) window.open(sel.value, '_blank');
 });
+
+function buildPresupuestoMeses(comparativaMensual, presupuesto2026) {
+  if (!comparativaMensual || !presupuesto2026) return [];
+  const NOMBRES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+  return presupuesto2026.map((bud, i) => {
+    const mesNum = i + 1;
+    const real = comparativaMensual.find(m => m.mes === mesNum);
+    const y26  = real ? real.y2026 : null;
+
+    // Solo meses ya cerrados (PASADO) tienen datos reales fiables
+    const esCerrado = real && real.tipo2026 === 'PASADO';
+
+    const occReal   = esCerrado && y26 ? y26.occPct : null;
+    const adrReal   = esCerrado && y26 ? y26.adr    : null;
+    const revHab    = esCerrado && y26 ? y26.revenue : null;
+    const revExtra  = esCerrado && y26 ? y26.revenueExtra : null;
+    const revTotal  = (revHab != null && revExtra != null) ? revHab + revExtra : null;
+    const rnReal    = esCerrado && y26 ? y26.rn : null;
+
+    const occBud    = bud.occBudget;
+    const adrBud    = bud.adrBudget;
+    const revHabBud = bud.revHabBudget;
+    const revExtBud = bud.revExtBudget;
+    const revTotBud = bud.revTotalBudget;
+    const rnBud     = bud.rnBudget;
+
+    // Variaciones
+    const varOccPP  = (occReal != null && occBud != null)  ? occReal - occBud  : null;
+    const varADRPct = (adrReal != null && adrBud != null && adrBud !== 0)
+                      ? (adrReal - adrBud) / adrBud * 100 : null;
+    const varADREUR = (adrReal != null && adrBud != null)  ? adrReal - adrBud  : null;
+    const varRevHabPct = (revHab != null && revHabBud != null && revHabBud !== 0)
+                         ? (revHab - revHabBud) / revHabBud * 100 : null;
+    const varRevHabEUR = (revHab != null && revHabBud != null) ? revHab - revHabBud : null;
+    const varRevExtPct = (revExtra != null && revExtBud != null && revExtBud !== 0)
+                         ? (revExtra - revExtBud) / revExtBud * 100 : null;
+    const varRevExtEUR = (revExtra != null && revExtBud != null) ? revExtra - revExtBud : null;
+    const varTotalPct  = (revTotal != null && revTotBud != null && revTotBud !== 0)
+                         ? (revTotal - revTotBud) / revTotBud * 100 : null;
+    const varTotalEUR  = (revTotal != null && revTotBud != null) ? revTotal - revTotBud : null;
+
+    // Semáforos (verde >= umbral, rojo < -umbral, ámbar intermedio)
+    const semaforo = (val, umbral) => {
+      if (val == null) return 'ambar';
+      if (val >= -umbral) return val >= 0 ? 'verde' : 'ambar';
+      return 'rojo';
+    };
+
+    return {
+      mesNombre:       NOMBRES[i],
+      real:            { rn: rnReal, occ: occReal, adr: adrReal,
+                         revHab, revExtra, revTotal },
+      budget:          { rn: rnBud, occ: occBud, adr: adrBud,
+                         revHab: revHabBud, revExtra: revExtBud, revTotal: revTotBud },
+      varOccPP,        semaforoOcc:     semaforo(varOccPP,    3),
+      varADRPct,       varADREUR,       semaforoADR:     semaforo(varADRPct,   3),
+      varRevenuePct:   varRevHabPct,    varRevenueEUR:   varRevHabEUR,
+                                        semaforoRevenue: semaforo(varRevHabPct, 5),
+      varRevenueExtraPct: varRevExtPct, varRevenueExtraEUR: varRevExtEUR,
+                                        semaforoRevenueExtra: semaforo(varRevExtPct, 10),
+      varTotalPct,     varTotalEUR,     semaforoTotal:   semaforo(varTotalPct,  5),
+    };
+  });
+}
 </script>
 </body>
 </html>
