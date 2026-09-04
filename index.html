@@ -897,14 +897,15 @@ function buildPresupuestoMeses(comparativaMensual, presupuesto2026) {
     const real   = comparativaMensual.find(m => m.mes === mesNum);
     const y26    = real ? real.y2026 : null;
     const esCerrado = real && (real.tipo2026||'').toUpperCase() === 'PASADO';
+    const tieneReal  = y26 != null; // OTB: meses futuros también tienen datos parciales
 
-    // Reales (solo meses cerrados)
-    const occReal  = esCerrado && y26 ? y26.occPct      : null;
-    const adrReal  = esCerrado && y26 ? y26.adr         : null;
-    const revHab   = esCerrado && y26 ? y26.revenue     : null;
-    const revExtra = esCerrado && y26 ? (y26.revenueExtra != null ? y26.revenueExtra : 0) : null;
+    // Reales: cerrados = dato definitivo; futuros = OTB (reservas confirmadas a fecha)
+    const occReal  = tieneReal ? y26.occPct      : null;
+    const adrReal  = tieneReal && y26.rn > 0 ? y26.adr : null; // ADR solo si hay RN
+    const revHab   = tieneReal ? y26.revenue     : null;
+    const revExtra = tieneReal ? (y26.revenueExtra != null ? y26.revenueExtra : 0) : null;
     const revTotal = (revHab != null) ? revHab + (revExtra || 0) : null;
-    const rnReal   = esCerrado && y26 ? y26.rn          : null;
+    const rnReal   = tieneReal ? y26.rn          : null;
 
     // Budget
     const occBud    = bud.occBudget;
