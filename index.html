@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Revenue Dashboard · Hotel Faisanera Golf</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#222D63;
+    --navy-deep:#1A2050;
+    --blue-mid:#5762A5;
+    --orange:#E8533A;
+    --salmon:#E7895E;
+    --card:#2A3570;
+    --card-border:#3A4580;
+    --text-dim:#8090B0;
+    --green-neon:#00FF88;
+    --white:#FFFFFF;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:Arial, Helvetica, sans-serif;
+    background: linear-gradient(160deg, var(--navy) 0%, var(--navy-deep) 100%);
+    color:var(--white);
+    min-height:100vh;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 20px 64px;}
+
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:28px;border-bottom:1px solid var(--card-border);padding-bottom:20px;}
+  header h1{font-size:28px;margin:0 0 4px;font-weight:700;}
+  header .sub{color:var(--salmon);font-size:14px;letter-spacing:.03em;text-transform:uppercase;}
+  .brand{font-size:12px;color:var(--text-dim);text-align:right;}
+
+  .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:28px;}
+  .controls label{font-size:13px;color:var(--text-dim);}
+  .controls input[type=date]{
+    background:var(--card);border:1px solid var(--card-border);color:var(--white);
+    padding:8px 12px;border-radius:8px;font-family:inherit;font-size:14px;
+  }
+  .controls button{
+    background:var(--orange);color:var(--white);border:none;padding:9px 18px;
+    border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;
+  }
+  .controls button:hover{opacity:.9;}
+  .meta-note{font-size:12px;color:var(--text-dim);}
+  .badge-disp{background:rgba(0,255,136,.12);border:1px solid var(--green-neon);color:var(--green-neon);padding:5px 12px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.03em;}
+  .badge-disp.bruta{background:rgba(255,201,74,.12);border-color:#FFC94A;color:#FFC94A;}
+  .chip{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:2px 6px;border-radius:5px;margin-top:3px;}
+  .chip.aprox{background:rgba(255,201,74,.18);color:#FFC94A;border:1px solid #FFC94A;}
+  .chip.real{background:rgba(0,255,136,.10);color:var(--green-neon);border:1px solid rgba(0,255,136,.45);}
+  .prevval{font-size:12px;color:var(--text-dim);margin-top:2px;font-weight:400;}
+  .aviso-mes{font-size:12.5px;line-height:1.5;margin:6px 0;color:var(--text-dim);}
+  .aviso-mes b{color:#fff;}
+  .tabla-scroll{overflow-x:auto;}
+  .tabla-scroll table{min-width:1100px;}
+  .aprox{color:#FFC94A;cursor:help;}
+  .marca{cursor:help;font-size:12px;margin-left:4px;}
+  .nota-box{background:rgba(255,255,255,.04);border:1px solid var(--card-border);border-radius:10px;padding:10px 14px;margin-bottom:22px;font-size:12px;color:var(--text-dim);line-height:1.5;}
+
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:32px;}
+  @media(max-width:800px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+  .kpi-card{
+    background:var(--card);border:1px solid var(--card-border);border-radius:12px;
+    padding:18px;position:relative;overflow:hidden;
+  }
+  .kpi-card .label{font-size:12.5px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .kpi-card .value{font-size:30px;font-weight:700;line-height:1.1;}
+  .kpi-card .delta{font-size:13px;margin-top:6px;font-weight:700;}
+  .delta.up{color:var(--green-neon);}
+  .delta.down{color:var(--orange);}
+
+  section{margin-bottom:36px;}
+  h2{font-size:19px;margin:0 0 14px;font-weight:700;}
+  h2 .tag{font-size:12px;color:var(--text-dim);font-weight:400;margin-left:8px;}
+
+  .chart-box{
+    background:var(--card);border:1px solid var(--card-border);border-radius:12px;
+    padding:20px;height:340px;
+  }
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{
+    text-align:right;color:var(--text-dim);font-weight:600;font-size:12px;
+    text-transform:uppercase;letter-spacing:.03em;padding:10px 8px;border-bottom:1px solid var(--card-border);
+  }
+  th:first-child, td:first-child{text-align:left;}
+  td{padding:10px 8px;text-align:right;border-bottom:1px solid rgba(255,255,255,.06);}
+  tr:hover td{background:rgba(255,255,255,.03);}
+  .semaforo{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;}
+  .semaforo.verde{background:var(--green-neon);}
+  .semaforo.ambar{background:#FFC94A;}
+  .semaforo.rojo{background:var(--orange);}
+  .semaforo.na{background:#555;}
+  .na-cell{color:#556;}
+  .sub-valor{color:var(--text-dim);font-size:11.5px;font-weight:400;}
+
+  .loading, .error{padding:60px 20px;text-align:center;color:var(--text-dim);}
+  .error{color:var(--orange);}
+
+  footer{margin-top:40px;font-size:12px;color:var(--text-dim);text-align:center;border-top:1px solid var(--card-border);padding-top:16px;}
+  .downloads-box{
+    display:none;
+    background:var(--card);border:1px solid var(--card-border);border-radius:12px;
+    padding:16px 18px;margin-bottom:28px;
+    display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  }
+  .downloads-box.visible{display:flex;}
+  .downloads-box .dl-label{font-size:13px;color:var(--text-dim);white-space:nowrap;}
+  .downloads-box select{
+    background:var(--navy-deep);border:1px solid var(--card-border);color:var(--white);
+    padding:8px 12px;border-radius:8px;font-family:inherit;font-size:14px;min-width:220px;
+  }
+  .downloads-box button{
+    background:var(--orange);color:var(--white);border:none;padding:9px 18px;
+    border-radius:8px;font-weight:700;cursor:pointer;font-size:14px;
+  }
+  .downloads-box button:hover{opacity:.9;}
+  .downloads-box button:disabled{opacity:.5;cursor:not-allowed;}
+</style>
+</head>
+<body>
+
+<!-- Pantalla de acceso: tapa todo hasta introducir el código correcto -->
+<div id="loginOverlay" style="position:fixed;inset:0;background:linear-gradient(160deg, var(--navy) 0%, var(--navy-deep) 100%);z-index:1000;display:flex;align-items:center;justify-content:center;">
+  <div style="background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:36px 32px;width:320px;max-width:90vw;text-align:center;">
+    <div style="font-size:20px;font-weight:700;color:#fff;margin-bottom:6px;">Revenue Dashboard</div>
+    <div style="font-size:13px;color:var(--salmon);margin-bottom:22px;text-transform:uppercase;letter-spacing:.03em;">Hotel Faisanera Golf</div>
+    <input type="password" id="loginCodigo" placeholder="Código de acceso" autocomplete="off"
+      style="width:100%;box-sizing:border-box;background:var(--navy-deep);border:1px solid var(--card-border);color:#fff;padding:11px 14px;border-radius:8px;font-size:15px;margin-bottom:14px;text-align:center;letter-spacing:.05em;">
+    <button id="btnLogin" style="width:100%;background:var(--orange);color:#fff;border:none;padding:11px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;">Entrar</button>
+    <div id="loginError" style="color:var(--orange);font-size:13px;margin-top:12px;min-height:16px;"></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Revenue Dashboard</h1>
+      <div class="sub">Hotel Faisanera Golf · Palazuelos de Eresma, Segovia</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="brand">The Revenue Run Rate<br>Daniel Pérez Rovira</div>
+      <button id="btnLogout" style="margin-top:10px;background:transparent;border:1px solid var(--card-border);color:var(--text-dim);padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <div class="controls">
+    <label for="fechaSnapshot">Fecha de snapshot (acumulado desde la apertura hasta ese día):</label>
+    <input type="date" id="fechaSnapshot">
+    <button id="btnActualizar">Actualizar</button>
+    <label style="display:flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="chkNoCache">
+      Forzar datos frescos (ignora caché de 6h)
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;">
+      Disponibilidad:
+      <select id="selDisp" style="background:var(--card);border:1px solid var(--card-border);color:var(--white);padding:8px 10px;border-radius:8px;font-family:inherit;font-size:14px;">
+        <option value="neta" selected>Neta (descuenta cierres y bloqueos)</option>
+        <option value="bruta">Bruta (capacidad × días)</option>
+      </select>
+    </label>
+    <label style="display:flex;align-items:center;gap:8px;">
+      Revenue:
+      <select id="selRev" style="background:var(--card);border:1px solid var(--card-border);color:var(--white);padding:8px 10px;border-radius:8px;font-family:inherit;font-size:14px;">
+        <option value="aloj" selected>Alojamiento</option>
+        <option value="extra">Extra</option>
+        <option value="total">Total (alojamiento + extra)</option>
+      </select>
+    </label>
+    <span class="badge-disp" id="badgeDisp">Disponibilidad neta</span>
+    <span class="meta-note" id="metaNote"></span>
+  </div>
+
+  <div class="downloads-box" id="downloadsBox">
+    <span class="dl-label">📄 Informe mensual (PDF):</span>
+    <select id="selInforme"></select>
+    <button id="btnDescargar">Descargar</button>
+  </div>
+
+  <div id="app">
+    <div class="loading">Cargando datos del snapshot…</div>
+  </div>
+
+  <footer>Revenue Dashboard Faisanera · The Revenue Run Rate · Datos actualizados automáticamente desde Pick-Up 2026</footer>
+</div>
+
+<script>
+const PROXY_URL = 'https://script.google.com/macros/s/AKfycbyCMyEaimcT4H15MhRH6twDkSor5pCRaKB4FoVOiw8tzvQI-2zXGE1OUQnST6v5EWF9vw/exec';
+const CLAVE_STORAGE = 'trr_codigo_faisanera'; // namespacing por propiedad, por si el mismo navegador visita varios dashboards
+const SESION_MAX_MINUTOS = 60; // pasado este tiempo desde el login, se pide el código de nuevo
+
+const fmtEUR = n => n == null ? '—' : n.toLocaleString('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0,useGrouping:'always'});
+const fmtADR = n => n == null ? '—' : n.toLocaleString('es-ES',{style:'currency',currency:'EUR',minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:'always'});
+const fmtPct = n => n == null ? '—' : n.toLocaleString('es-ES',{maximumFractionDigits:1}) + '%';
+const fmtNum = n => n == null ? '—' : Math.round(n).toLocaleString('es-ES',{useGrouping:'always'});
+const dec = (n,d) => n.toFixed(d).replace('.',',');
+const fmtDDMMYYYYtoInput = s => { if(!s) return ''; const [d,m,y]=s.split('/'); return `${y}-${m}-${d}`; };
+const inputToDDMMYYYY = v => { const [y,m,d]=v.split('-'); return `${d}/${m}/${y}`; };
+
+let chart2026vs2025;
+
+// Guarda el código junto con el instante en que se introdujo, para poder caducarlo
+function guardarSesion_(codigo){
+  localStorage.setItem(CLAVE_STORAGE, JSON.stringify({ codigo, ts: Date.now() }));
+}
+
+// Devuelve el código guardado SOLO si sigue siendo válido (dentro de SESION_MAX_MINUTOS).
+// Si ha caducado, borra la sesión y devuelve null junto con el motivo, para poder
+// avisar al usuario de por qué se le vuelve a pedir el código.
+function obtenerCodigoValido_(){
+  const crudo = localStorage.getItem(CLAVE_STORAGE);
+  if(!crudo) return { codigo: null, caducado: false };
+  let datos;
+  try{ datos = JSON.parse(crudo); } catch(e){ datos = null; }
+  if(!datos || !datos.codigo || !datos.ts){
+    localStorage.removeItem(CLAVE_STORAGE);
+    return { codigo: null, caducado: false };
+  }
+  const minutosTranscurridos = (Date.now() - datos.ts) / 60000;
+  if(minutosTranscurridos > SESION_MAX_MINUTOS){
+    localStorage.removeItem(CLAVE_STORAGE);
+    return { codigo: null, caducado: true };
+  }
+  return { codigo: datos.codigo, caducado: false };
+}
+
+async function cargarDatos(fechaDDMMYYYY, sinCache, mesPace){
+  const app = document.getElementById('app');
+  app.innerHTML = '<div class="loading">Cargando datos del snapshot…</div>';
+  try{
+    const sesion = obtenerCodigoValido_();
+    if(!sesion.codigo){
+      mostrarLogin(sesion.caducado ? 'Tu sesión ha caducado por tiempo de inactividad. Introduce el código de nuevo.' : '');
+      return;
+    }
+    const codigo = sesion.codigo;
+
+    const qs = new URLSearchParams();
+    qs.set('codigo', codigo);
+    if(fechaDDMMYYYY) qs.set('fecha', fechaDDMMYYYY);
+    if(sinCache) qs.set('nocache', '1');
+    if(mesPace) qs.set('mesPace', String(mesPace));
+    qs.set('disp', document.getElementById('selDisp').value);
+    const url = PROXY_URL + '?' + qs.toString();
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if(!data.ok && data.error === 'no_autorizado'){
+      localStorage.removeItem(CLAVE_STORAGE);
+      mostrarLogin('Código incorrecto o caducado. Inténtalo de nuevo.');
+      return;
+    }
+    if(!data.ok){ throw new Error(data.error || 'Error desconocido'); }
+    if(typeof Chart === 'undefined'){
+      throw new Error('La librería de gráficos (Chart.js) no se ha cargado desde el CDN. Revisa la conexión o si cdnjs.cloudflare.com está bloqueado en esta red.');
+    }
+    // Si no se pidió una fecha concreta, el backend ha usado el último snapshot real
+    // disponible — reflejamos esa fecha en el selector, en vez de dejar la de "hoy"
+    // (que casi nunca coincide con un pick-up real).
+    if(!fechaDDMMYYYY && data.snapshotUsado2026){
+      document.getElementById('fechaSnapshot').value = fmtDDMMYYYYtoInput(data.snapshotUsado2026);
+    }
+    render(data);
+  }catch(err){
+    app.innerHTML = '<div class="error">No se han podido cargar los datos: ' + err.message + '</div>';
+  }
+}
+
+function mostrarLogin(mensajeError){
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('loginError').textContent = mensajeError || '';
+  document.getElementById('loginCodigo').value = '';
+  document.getElementById('loginCodigo').focus();
+}
+
+function ocultarLogin(){
+  document.getElementById('loginOverlay').style.display = 'none';
+}
+
+document.getElementById('btnLogin').addEventListener('click', intentarLogin);
+document.getElementById('loginCodigo').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') intentarLogin();
+});
+
+document.getElementById('btnLogout').addEventListener('click', () => {
+  localStorage.removeItem(CLAVE_STORAGE);
+  mostrarLogin('');
+});
+
+// Comprobación proactiva: si el usuario deja la pestaña abierta de fondo y vuelve a
+// ella pasado el tiempo de caducidad, se le pide el código en cuanto la pestaña
+// vuelve a estar visible — sin esperar a que intente pulsar Actualizar.
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible'){
+    const sesion = obtenerCodigoValido_();
+    if(!sesion.codigo && document.getElementById('loginOverlay').style.display === 'none'){
+      mostrarLogin(sesion.caducado ? 'Tu sesión ha caducado por tiempo de inactividad. Introduce el código de nuevo.' : '');
+    }
+  }
+});
+
+function intentarLogin(){
+  const valor = document.getElementById('loginCodigo').value.trim();
+  if(!valor){ return; }
+  guardarSesion_(valor);
+  ocultarLogin();
+  cargarInformesDisponibles(valor);
+  const v = document.getElementById('fechaSnapshot').value;
+  cargarDatos(v ? inputToDDMMYYYY(v) : null, false);
+}
+
+let DATA = null;
+const REV = {
+  aloj:  { k:'revenue',      pk:'revAloj',  pres:'roomRevenue',  presK:'revenue',      nombre:'alojamiento' },
+  extra: { k:'revenueExtra', pk:'revExtra', pres:'revenueExtra', presK:'revenueExtra', nombre:'extra' },
+  total: { k:'revenueTotal', pk:'revTotal', pres:'total',        presK:'total',        nombre:'total' }
+};
+const tipoRev = () => document.getElementById('selRev').value;
+const fmtFechaHora = iso => { try { return new Date(iso).toLocaleString('es-ES',{timeZone:'Europe/Madrid',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e){ return iso; } };
+const fmtISOaES = iso => { if(!iso) return '—'; const [y,m,d]=iso.slice(0,10).split('-'); return `${d}/${m}/${y}`; };
+
+function actualizarEtiquetasTipo(){
+  const t = REV[tipoRev()];
+  const q = id => document.getElementById(id);
+  if(q('tagChart')) q('tagChart').textContent = `Revenue ${t.nombre} real vs presupuesto por mes`;
+}
+
+function render(data){
+  DATA = data;
+  document.getElementById('metaNote').textContent =
+    `Snapshot usado: ${data.snapshotUsado2026 || '—'} · Último snapshot disponible: ${data.ultimaActualizacionDatos || '—'}`;
+
+  const badge = document.getElementById('badgeDisp');
+  badge.textContent = data.etiquetaDisponibilidad || 'Disponibilidad neta';
+  badge.classList.toggle('bruta', data.modoDisponibilidad === 'bruta');
+  window.ETIQUETA_ARR_APROX = data.etiquetaArrAprox || 'aproximado, factor de corrección aplicado';
+  window.CIERRES_TOTALES = data.cierresTotales || {};
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="nota-box">
+      <strong style="color:#fff;">${data.etiquetaDisponibilidad}.</strong> ${(data.notasComparabilidad || []).join(' ')}
+      <br><span class="aprox">~</span> = ARR <em>${window.ETIQUETA_ARR_APROX}</em> (snapshot con el mes aún sin cerrar/corregir; el ADR no se ve afectado).
+      <br>⚡ = apertura puntual por petición en día de cierre semanal Lun-Mar (RN &gt; 0): se cuenta el inventario completo de ese día. 🔧 = habitaciones bloqueadas por avería. Sin comparativa interanual hasta abril de 2027: la referencia es el presupuesto 2026.
+    </div>
+
+    <section>
+      <h2>KPIs YTD <span class="tag">${data.ytd.metodo === 'diario' ? 'acumulado desde el 01/04/2026 (apertura 15/04) hasta el ' + fmtISOaES(data.ytd.hastaFecha) + ' (incluido), comparado con el presupuesto prorrateado hasta esa fecha' : 'acumulado de meses cerrados (modo mensual: falta ejecutar el extractor v2.1)'} · ${data.etiquetaDisponibilidad.toLowerCase()}</span></h2>
+      <div class="kpi-grid" id="kpiGrid" style="grid-template-columns:repeat(4,1fr);"></div>
+    </section>
+
+    <section>
+      <h2>Real vs presupuesto por mes <span class="tag" id="tagChart">Revenue alojamiento real vs presupuesto</span></h2>
+      <div class="chart-box"><canvas id="chartMensual"></canvas></div>
+    </section>
+
+    <section>
+      <h2>Detalle mensual 2026 <span class="tag" id="tagDetalle">desde la apertura · ⚡ apertura puntual · 🔧 bloqueos por avería · 🔒 días previos a la apertura</span></h2>
+      <div class="tabla-scroll">
+      <table id="tablaMensual">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Mes</th>
+            <th>RN</th><th>Hab. disp.</th><th>Occ</th>
+            <th>ADR</th><th>ARR</th>
+            <th>Rev. Aloj.</th><th>Rev. Extra</th><th>Rev. Total</th>
+            <th>RevPAR</th><th>TRevPAR</th>
+            
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <p class="meta-note" style="margin-top:10px;">
+        ADR = (Alojamiento + Extra) ÷ RN · ARR = Alojamiento ÷ RN · RevPAR = Alojamiento ÷ Hab. disp. · TRevPAR = (Alojamiento + Extra) ÷ Hab. disp. RevPAR, TRevPAR y ARR se muestran como dato, sin semáforo propio. Ocupación, RevPAR y TRevPAR respetan el selector de disponibilidad; ARR, ADR, RN y Revenue no dependen de ella.
+      </p>
+    </section>
+
+    <section>
+      <h2>Pick-up próximos 90 días <span class="tag">velocidad de reserva (últimas 3 semanas, neta), proyección lineal y erosión (cancelaciones) últimos 7 días</span></h2>
+      <table id="tablaPickup">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Mes</th>
+            <th>RN actual</th><th>Velocidad hab/día (últ. 21 d)</th>
+            <th>Días restantes</th><th>Proyección RN</th><th>Proyección Occ</th>
+            <th>Pickup bruto 7d</th><th>● Erosión 7d</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p class="meta-note" style="margin-top:10px;">
+        Erosión = habitaciones perdidas por cancelación neta día a día (no solo el resultado final entre dos snapshots). Semáforo: verde si la cancelación es &lt;20% del movimiento bruto de la ventana, ámbar 20-40%, rojo &gt;40%.
+      </p>
+    </section>
+
+    <section>
+      <h2>Pace Index <span class="tag">ritmo de reserva 2026 vs curva de referencia "prestada" de Hotel La Farm, mismo mes de calendario, escalada al presupuesto de Faisanera</span></h2>
+      <div class="controls" style="margin-bottom:16px;">
+        <label for="selectorMesPace">Mes a analizar:</label>
+        <select id="selectorMesPace"></select>
+      </div>
+      <div class="chart-box"><canvas id="chartPace"></canvas></div>
+      <p class="meta-note" style="margin-top:10px;" id="paceNote"></p>
+      <p class="meta-note" style="margin-top:6px;">
+        Faisanera no tiene año anterior propio (abrió el 15/04/2026). Como referencia de ritmo de reserva se usa el patrón real de Hotel La Farm en el mismo mes de calendario (mismo grupo empresarial), escalado al volumen presupuestado de Faisanera — no al de La Farm. Solo RN, sin ADR (el nivel de precio de una propiedad no es comparable a la otra).
+      </p>
+    </section>
+
+    <section>
+      <h2>Antelación media de reserva <span class="tag">días de antelación con los que se reserva cada mes, ponderado por volumen</span></h2>
+      <table id="tablaAntelacion">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Mes</th>
+            <th>Antelación media (días)</th>
+            
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p class="meta-note" style="margin-top:10px;">
+        Solo cuenta pickup real (subidas de RN), no cancelaciones. Días positivos aumentando = el mercado reserva con más margen; disminuyendo = se vuelve más last-minute.
+      </p>
+    </section>
+
+    <section>
+      <h2>Presupuesto 2026 <span class="tag">real vs presupuesto mensualizado — Ocupación (bruta), ARR, Revenue Habitación, Revenue Extra y Total</span></h2>
+      <table id="tablaPresupuesto">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Mes</th>
+            <th>RN real</th>
+            <th>● Occ vs Pres.</th>
+            <th>● ARR vs Pres.</th>
+            <th>● Revenue Hab. vs Pres.</th>
+            <th>● Revenue Extra vs Pres.</th>
+            <th>● Total vs Pres.</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p class="meta-note" style="margin-top:10px;">
+        <strong style="color:#fff;">Esta sección usa siempre ocupación bruta</strong> (la disponibilidad del presupuesto es bruta), con independencia del selector de disponibilidad. La tarifa media del presupuesto se compara con el ARR (alojamiento ÷ RN) tal cual el Pick-Up.<br>
+        Verde = igual o por encima del presupuesto · Ámbar = ligeramente por debajo, atención · Rojo = desviación acusada, revisar.
+        Umbrales: Occ ±3pp · ARR ±3% · Revenue Habitación ±5% · Revenue Extra ±10% (más volátil por su menor volumen) · Total ±5%.
+      </p>
+    </section>
+
+    <section>
+      <h2>Seguimiento del pick-up vs presupuesto <span class="tag">meses aún abiertos: reservas actuales frente al presupuesto y ritmo necesario frente al real · sin proyección de cierre (sin histórico)</span></h2>
+      <div class="tabla-scroll">
+      <table id="tablaSeg">
+        <thead>
+          <tr>
+            <th style="text-align:left;">Mes</th>
+            <th>RN reservadas</th>
+            <th>RN presupuesto</th>
+            <th>% RN</th>
+            <th id="thSegRev">Revenue reservado</th>
+            <th id="thSegPres">Revenue presupuesto</th>
+            <th>% Revenue</th>
+            <th>Ritmo necesario (RN/día)</th>
+            <th>Ritmo real 21 d (RN/día)</th>
+            <th>Lectura</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+      <div class="chart-box" style="height:300px;margin-top:16px;"><canvas id="chartSeg"></canvas></div>
+      <p class="meta-note" style="margin-top:10px;">
+        No se proyecta un cierre: Faisanera abrió el 15/04/2026 y no hay año anterior con el que medir cuánto crece un mes hasta su cierre (la previsión de pace estará disponible a partir de abril de 2027).
+        Se compara lo reservado con el presupuesto del mes y el ritmo que haría falta (RN pendientes ÷ días hasta fin de mes) con el ritmo real de las últimas 3 semanas, neto de cancelaciones.
+        Verde = el ritmo reciente cubre el necesario · Ámbar = cubre al menos la mitad · Rojo = muy inferior. Lectura orientativa: un mes puede reservarse más tarde de lo que sugiere el ritmo reciente.
+      </p>
+    </section>
+  `;
+
+  renderKPIs(data.ytd);
+  renderChart(data.comparativaMensual);
+  renderTablaMensual(data.comparativaMensual);
+  actualizarEtiquetasTipo();
+  renderPickup(data.pickup90);
+  renderSelectorMesPace(data.mesPaceSeleccionado);
+  renderPaceChartFaisanera(data.paceCurve);
+  renderAntelacion(data.antelacionMedia);
+  renderSeguimiento(data.seguimientoPresupuesto);
+  renderPresupuesto(data.presupuesto2026);
+}
+
+function renderSeguimiento(seg){
+  const tbody = document.querySelector('#tablaSeg tbody');
+  const t = REV[tipoRev()];
+  const NA = '<span class="na-cell">—</span>';
+  if(!seg || !seg.length){ tbody.innerHTML = '<tr><td colspan="10" class="na-cell">No hay meses abiertos en este snapshot.</td></tr>'; return; }
+  const otbK = {aloj:'otbRevAloj', extra:'otbRevExtra', total:'otbRevTotal'}[tipoRev()];
+  const presK = {aloj:'presRevAloj', extra:'presRevExtra', total:'presRevTotal'}[tipoRev()];
+  const pctK = {aloj:'pctRevAloj', extra:'pctRevExtra', total:'pctRevTotal'}[tipoRev()];
+  document.getElementById('thSegRev').textContent = `Revenue ${t.nombre} reservado`;
+  document.getElementById('thSegPres').textContent = `Revenue ${t.nombre} presupuesto`;
+  const pc = v => v == null ? NA : dec(v,1).replace('.',',') + '%';
+  tbody.innerHTML = seg.map(s => `<tr>
+    <td>${s.mesNombre}</td>
+    <td>${fmtNum(s.otbRN)}</td><td>${fmtNum(s.presRN)}</td><td>${pc(s.pctRN)}</td>
+    <td>${fmtEUR(s[otbK])}</td><td>${fmtEUR(s[presK])}</td><td>${pc(s[pctK])}</td>
+    <td>${s.faltanRN > 0 ? dec(s.ritmoNecesarioRNDia,2) : NA}</td>
+    <td>${s.ritmoRealRNDia != null ? dec(s.ritmoRealRNDia,2) : NA}</td>
+    <td style="text-align:left;"><span class="semaforo ${s.semaforo}"></span>${s.texto}</td>
+  </tr>`).join('');
+  if(window.chartSegInstance) window.chartSegInstance.destroy();
+  const ctx = document.getElementById('chartSeg').getContext('2d');
+  window.chartSegInstance = new Chart(ctx, {
+    type:'bar',
+    data:{ labels: seg.map(s => s.mesNombre), datasets:[
+      { label:'Presupuesto', data: seg.map(s => s[presK]), backgroundColor:'#5762A5' },
+      { label:'Reservado hoy', data: seg.map(s => s[otbK]), backgroundColor:'#00FF88' }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{ color:'#fff' } } },
+      scales:{ x:{ ticks:{ color:'#8090B0' }, grid:{ color:'rgba(255,255,255,.06)' } },
+               y:{ ticks:{ color:'#8090B0', callback: v => (v/1000)+'k€' }, grid:{ color:'rgba(255,255,255,.06)' } } } }
+  });
+}
+
+function renderAntelacion(meses){
+  const tbody = document.querySelector('#tablaAntelacion tbody');
+
+  const celdaAntelacion = (valor, sinDatos) => {
+    if(sinDatos) return '<span class="na-cell" title="No hay snapshots anteriores al inicio del mes para este año — no existe cruce con el año previo en el histórico">Sin datos disponibles</span>';
+    if(valor == null) return '<span class="na-cell">—</span>';
+    return dec(valor,1) + 'd';
+  };
+
+  tbody.innerHTML = meses.map(m => {
+    const varTxt = m.varDias != null
+      ? `<span class="${m.varDias>=0?'delta up':'delta down'}" style="font-size:13px;">${m.varDias>=0?'+':''}${dec(m.varDias,1)}d</span>`
+      : '<span class="na-cell">—</span>';
+    return `<tr>
+      <td>${m.mesNombre}</td>
+      <td>${celdaAntelacion(m.antelacion2026, m.sinDatos2026)}</td>
+
+    </tr>`;
+  }).join('');
+}
+
+
+
+
+
+function renderSelectorMesPace(mesSeleccionado){
+  const nombres = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const sel = document.getElementById('selectorMesPace');
+  sel.innerHTML = nombres.map((n, i) => `<option value="${i+1}" ${i+1===mesSeleccionado?'selected':''}>${n}</option>`).join('');
+  sel.onchange = () => {
+    const v = document.getElementById('fechaSnapshot').value;
+    const sinCache = document.getElementById('chkNoCache').checked;
+    if(v) cargarDatos(inputToDDMMYYYY(v), sinCache, Number(sel.value));
+  };
+}
+
+function renderKPIs(ytd){
+  const grid = document.getElementById('kpiGrid');
+  const a = ytd.y2026, v = ytd.vsPresupuesto;
+  if(!a){ grid.innerHTML = '<div class="na-cell">Sin datos acumulados todavía.</div>'; return; }
+  const p = v ? v.presupuesto : null;
+  const modoNeta = document.getElementById('selDisp').value === 'neta';
+  const aprox = a.arrAprox;
+  // El presupuesto se compara con base BRUTA: la variación solo se muestra sobre los valores brutos
+  const items = [
+    { label:'Ocupación YTD', val:a.occPct, fmt:fmtPct, pres:p&&p.occPct, d:v&&v.varOccPP, pp:true, sem:v&&v.semaforoOcc, nota:'Presupuesto y variación con ocupación bruta' },
+    { label:'ADR medio YTD (con extras)', val:a.adr, fmt:fmtADR, pres:p&&p.adr },
+    { label:'ARR medio YTD (sin extras)'+(aprox?' ~':''), val:a.arr, fmt:fmtADR, pres:p&&p.arr, d:v&&v.varARRPct, sem:v&&v.semaforoARR },
+    { label:'Revenue alojamiento YTD', val:a.revenue, fmt:fmtEUR, pres:p&&p.revenue, d:v&&v.varRevenuePct, sem:v&&v.semaforoRevenue },
+    { label:'Revenue extra YTD', val:a.revenueExtra, fmt:fmtEUR, pres:p&&p.revenueExtra, d:v&&v.varRevenueExtraPct, sem:v&&v.semaforoRevenueExtra },
+    { label:'Revenue total YTD', val:a.revenueTotal, fmt:fmtEUR, pres:p&&p.revenueTotal, d:v&&v.varRevenueTotalPct, sem:v&&v.semaforoRevenueTotal },
+    { label:'RevPAR YTD'+(aprox?' ~':''), val:a.revpar, fmt:fmtADR, pres:p&&p.revpar, nota: modoNeta ? 'Disponibilidad neta (presupuesto en bruto)' : '' },
+    { label:'TRevPAR YTD', val:a.trevpar, fmt:fmtADR, pres:p&&p.trevpar, nota: modoNeta ? 'Disponibilidad neta (presupuesto en bruto)' : '' }
+  ];
+  grid.innerHTML = items.map(it => {
+    let delta = '';
+    if(it.d != null){
+      const up = it.d >= 0;
+      delta = `<div class="delta ${up?'up':'down'}">${it.sem?`<span class="semaforo ${it.sem}"></span>`:''}${up?'+':''}${dec(it.d,1)}${it.pp?' pp':'%'} vs presupuesto</div>`;
+    }
+    const pres = (it.pres != null) ? `<div class="prevval">(Presupuesto: ${it.fmt(it.pres)})</div>` : '';
+    const nota = it.nota ? `<div style="font-size:11px;color:var(--text-dim);margin-top:3px;">${it.nota}</div>` : '';
+    const ap = (it.label.indexOf('~')>=0) ? `<div style="font-size:11px;margin-top:3px;" class="aprox">~ ${window.ETIQUETA_ARR_APROX}</div>` : '';
+    return `<div class="kpi-card"><div class="label">${it.label}</div><div class="value">${it.fmt(it.val)}</div>${delta}${pres}${nota}${ap}</div>`;
+  }).join('');
+}
+
+function renderChart(meses){
+  const t = REV[tipoRev()];
+  const pres = DATA.presupuesto2026 || [];
+  const labels = pres.map(m => m.mesNombre);
+  const real = pres.map(m => m.real ? m.real[t.presK] : null);
+  const budget = pres.map(m => m.presupuesto ? m.presupuesto[t.pres] : null);
+  if(chart2026vs2025) chart2026vs2025.destroy();
+  const ctx = document.getElementById('chartMensual').getContext('2d');
+  chart2026vs2025 = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[
+      { label:'Presupuesto', data:budget, backgroundColor:'#5762A5' },
+      { label:'Real / reservado 2026', data:real, backgroundColor:'#00FF88' }
+    ]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:'#fff' } } },
+      scales:{
+        x:{ ticks:{ color:'#8090B0' }, grid:{ color:'rgba(255,255,255,.06)' } },
+        y:{ ticks:{ color:'#8090B0', callback: v => (v/1000)+'k€' }, grid:{ color:'rgba(255,255,255,.06)' } }
+      }
+    }
+  });
+}
+
+// Formatea "variación combinada": signo + magnitud principal, y el valor numérico entre paréntesis
+function fmtCombinadoPct(pct, valor, fmtValor){
+  if(pct == null || valor == null) return '<span class="na-cell">—</span>';
+  const signo = pct >= 0 ? '+' : '';
+  return `${signo}${dec(pct,1)}% <span class="sub-valor">(${signo}${fmtValor(Math.abs(valor)).replace('-','')})</span>`;
+}
+function fmtCombinadoPP(pp){
+  if(pp == null) return '<span class="na-cell">—</span>';
+  const signo = pp >= 0 ? '+' : '';
+  return `${signo}${dec(pp,1)} pp`;
+}
+
+function renderPresupuesto(meses){
+  const tbody = document.querySelector('#tablaPresupuesto tbody');
+  if(!meses || !meses.length){
+    tbody.innerHTML = '<tr><td colspan="7" class="na-cell">Sin datos de presupuesto configurados.</td></tr>';
+    return;
+  }
+
+  const celdaCombinada = (semaforo, pct, valorEUR, fmtValor) => {
+    if(pct == null || valorEUR == null) return '<span class="na-cell">—</span>';
+    const signo = pct >= 0 ? '+' : '';
+    const signoValor = valorEUR >= 0 ? '+' : '-';
+    return `<span class="semaforo ${semaforo}"></span>${signo}${dec(pct,1)}% <span class="sub-valor">(${signoValor}${fmtValor(Math.abs(valorEUR))})</span>`;
+  };
+
+  tbody.innerHTML = meses.map(m => {
+    const celdaOcc = m.varOccPP == null ? '<span class="na-cell">—</span>'
+      : `<span class="semaforo ${m.semaforoOcc}"></span>${m.varOccPP>=0?'+':''}${dec(m.varOccPP,1)} pp`;
+    return `<tr>
+      <td>${m.mesNombre}</td>
+      <td>${m.real ? fmtNum(m.real.rn) : '<span class="na-cell">—</span>'}</td>
+      <td>${celdaOcc}</td>
+      <td>${celdaCombinada(m.semaforoADR, m.varADRPct, m.varADREUR, fmtADR)}</td>
+      <td>${celdaCombinada(m.semaforoRevenue, m.varRevenuePct, m.varRevenueEUR, fmtEUR)}</td>
+      <td>${celdaCombinada(m.semaforoRevenueExtra, m.varRevenueExtraPct, m.varRevenueExtraEUR, fmtEUR)}</td>
+      <td>${celdaCombinada(m.semaforoTotal, m.varTotalPct, m.varTotalEUR, fmtEUR)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderTablaMensual(meses){
+  const tbody = document.querySelector('#tablaMensual tbody');
+  const NA = '<span class="na-cell">—</span>';
+  const abiertos = meses.filter(m => m.y2026 && (m.y2026.rn > 0 || m.y2026.habDispBruta > 0 && m.mes >= 4));
+  tbody.innerHTML = abiertos.map(m => {
+    const y26 = m.y2026;
+    let marcas = '';
+    if(y26 && y26.diasExcepcion > 0){
+      marcas += `<span class="marca" title="Apertura puntual por petición (RN > 0 en día de cierre semanal Lun-Mar): ${y26.fechasExcepcion.join(', ')} de ${m.mesNombre.toLowerCase()}. Se cuenta el inventario completo de esos días.">⚡${y26.diasExcepcion}</span>`;
+    }
+    if(y26 && y26.bloqueadas > 0){
+      marcas += `<span class="marca" title="${y26.bloqueadas} hab-noche bloqueadas por avería, descontadas en vista neta.">🔧${y26.bloqueadas}</span>`;
+    }
+    if(y26 && y26.cierreTotal > 0 && m.mes === 4){
+      marcas += `<span class="marca" title="Días previos a la apertura (15/04/2026): no cuentan como disponibles en vista neta.">🔒</span>`;
+    }
+    const titleDisp = y26 ? `Bruta ${fmtNum(y26.habDispBruta)} · Neta ${fmtNum(y26.habDispNeta)} (cierre semanal −${fmtNum(y26.cierreSemanal)}, pre-apertura/cierre total −${fmtNum(y26.cierreTotal)}, bloqueadas −${fmtNum(y26.bloqueadas)})` : '';
+    const arrCelda = y26 ? fmtADR(y26.arr) + '<br>' + (y26.arrAprox ? `<span class="chip aprox" title="${window.ETIQUETA_ARR_APROX}">APROX.</span>` : '<span class="chip real">REAL</span>') : NA;
+    const revparMarca = (y26 && y26.arrAprox) ? `<span class="aprox" title="${window.ETIQUETA_ARR_APROX}">~</span>` : '';
+    return `<tr>
+      <td>${m.mesNombre}${marcas}</td>
+      <td>${y26 ? fmtNum(y26.rn) : NA}</td>
+      <td title="${titleDisp}">${y26 ? fmtNum(y26.habDisp) : NA}</td>
+      <td>${y26 ? fmtPct(y26.occPct) : NA}</td>
+      <td>${y26 ? fmtADR(y26.adr) : NA}</td>
+      <td>${arrCelda}</td>
+      <td>${y26 ? fmtEUR(y26.revenue) : NA}</td>
+      <td>${y26 ? fmtEUR(y26.revenueExtra) : NA}</td>
+      <td>${y26 ? fmtEUR(y26.revenueTotal) : NA}</td>
+      <td>${y26 ? revparMarca + fmtADR(y26.revpar) : NA}</td>
+      <td>${y26 ? fmtADR(y26.trevpar) : NA}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPickup(rows){
+  const tbody = document.querySelector('#tablaPickup tbody');
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="8" class="na-cell">No hay meses futuros dentro de los próximos 90 días en este snapshot.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => `<tr>
+    <td>${r.mesNombre}</td>
+    <td>${fmtNum(r.rnActual)}</td>
+    <td>${r.velocidadHabDia != null ? dec(r.velocidadHabDia,2) : '<span class="na-cell">—</span>'}</td>
+    <td>${r.diasRestantesMes}</td>
+    <td>${fmtNum(r.proyeccionRN)}</td>
+    <td>${r.proyeccionOccPct != null ? fmtPct(r.proyeccionOccPct) : '<span class="na-cell">—</span>'}</td>
+    <td>${r.pickupBrutoUlt7d != null ? '+' + fmtNum(r.pickupBrutoUlt7d) : '<span class="na-cell">—</span>'}</td>
+    <td><span class="semaforo ${r.semaforoErosion}"></span>${r.erosionUlt7d != null ? fmtNum(r.erosionUlt7d) : '<span class="na-cell">—</span>'}</td>
+  </tr>`).join('');
+}
+
+// Decide qué puntos del eje X llevan etiqueta visible, con dos reglas:
+// 1) "Trimestre activo" (los 3 meses de calendario más recientes de la curva): 2 etiquetas
+//    cada uno (inicio y fin del mes). Meses más antiguos: solo 1 etiqueta de referencia.
+// 2) Red de seguridad: como Chart.js reparte los puntos a espacio IGUAL según su posición
+//    en la lista (no según la fecha real), dos fechas elegidas que queden muy próximas en
+//    el índice se solapan visualmente aunque estén repartidas "bien" por mes. Se descarta
+//    la menos prioritaria de cada par demasiado cercano.
+// El snapshot más reciente de toda la curva se garantiza siempre.
+function seleccionarIndicesEtiqueta(curve){
+  const grupos = {}; // 'YYYY-MM' -> [índices de curve, en orden]
+  curve.forEach((p, i) => {
+    const [dd, mm, yyyy] = p.fecha2026.split('/');
+    const clave = `${yyyy}-${mm}`;
+    if(!grupos[clave]) grupos[clave] = [];
+    grupos[clave].push(i);
+  });
+
+  const clavesOrdenadas = Object.keys(grupos).sort();
+  const totalMeses = clavesOrdenadas.length;
+
+  // candidatos: {indice, prioridad} — prioridad más alta = se conserva antes en un conflicto
+  const candidatos = [];
+  clavesOrdenadas.forEach((clave, idxMes) => {
+    const indicesDelMes = grupos[clave];
+    const esTrimestreActivo = (totalMeses - 1 - idxMes) <= 2; // los 3 meses más recientes
+
+    if(esTrimestreActivo){
+      candidatos.push({ indice: indicesDelMes[0], prioridad: 2 });
+      if(indicesDelMes.length > 1){
+        candidatos.push({ indice: indicesDelMes[indicesDelMes.length - 1], prioridad: 2 });
+      }
+    } else {
+      candidatos.push({ indice: indicesDelMes[0], prioridad: 1 });
+    }
+  });
+
+  // El snapshot más reciente de toda la curva, prioridad máxima, siempre presente
+  const indiceFinal = curve.length - 1;
+  if(!candidatos.some(c => c.indice === indiceFinal)){
+    candidatos.push({ indice: indiceFinal, prioridad: 3 });
+  } else {
+    candidatos.forEach(c => { if(c.indice === indiceFinal) c.prioridad = 3; });
+  }
+
+  candidatos.sort((a, b) => a.indice - b.indice);
+
+  // Separación mínima entre dos etiquetas para que sus 2 líneas de texto no se toquen,
+  // ajustada al ancho disponible: como mínimo, un ~4% del total de puntos de la curva.
+  const gapMinimo = Math.max(2, Math.ceil(curve.length * 0.04));
+
+  const conservados = [];
+  candidatos.forEach(candidato => {
+    const anterior = conservados[conservados.length - 1];
+    if(!anterior || (candidato.indice - anterior.indice) >= gapMinimo){
+      conservados.push(candidato);
+    } else if(candidato.prioridad > anterior.prioridad){
+      // el nuevo candidato es más importante que el que ya teníamos pegado: lo sustituye
+      conservados[conservados.length - 1] = candidato;
+    }
+    // si el candidato nuevo es menos prioritario y está demasiado cerca, se descarta
+  });
+
+  return new Set(conservados.map(c => c.indice));
+}
+
+function renderPaceChartFaisanera(curve){
+  const note = document.getElementById('paceNote');
+  if(!curve || !curve.length){
+    note.textContent = 'No hay snapshots suficientes de este mes todavía para construir la curva de pace.';
+    return;
+  }
+
+  const indicesConEtiqueta = seleccionarIndicesEtiqueta(curve);
+  const labels = curve.map(p => {
+    const [dd, mm] = p.fecha2026.split('/');
+    return [`${p.diasAntesDelMes}d`, `${dd}/${mm}`];
+  });
+  const rn2026 = curve.map(p => p.rn2026);
+  const rnEsperado = curve.map(p => p.rnEsperadoRef);
+
+  if(window.chartPaceInstance) window.chartPaceInstance.destroy();
+  const ctx = document.getElementById('chartPace').getContext('2d');
+  window.chartPaceInstance = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        { label:'RN esperado (ref. La Farm, escalado a presupuesto)', data:rnEsperado, borderColor:'#E7895E', backgroundColor:'transparent', borderDash:[6,4], tension:.25 },
+        { label:'RN 2026 Faisanera (real)', data:rn2026, borderColor:'#00FF88', backgroundColor:'transparent', tension:.25 }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ labels:{ color:'#fff' } } },
+      scales:{
+        x:{
+          ticks:{
+            color:'#8090B0',
+            autoSkip:false,
+            callback: function(value, index){ return indicesConEtiqueta.has(index) ? labels[index] : null; }
+          },
+          grid:{ color:'rgba(255,255,255,.06)' }
+        },
+        y:{ title:{ display:true, text:'RN acumuladas', color:'#8090B0' }, ticks:{ color:'#8090B0' }, grid:{ color:'rgba(255,255,255,.06)' } }
+      }
+    }
+  });
+
+  const ultimo = curve[curve.length - 1];
+  if(ultimo.paceIndex != null){
+    note.innerHTML = `<strong>Pace Index (RN): ${ultimo.paceIndex}%</strong> — referencia tomada de Hotel La Farm ${ultimo.anioReferenciaLaFarm} (desfase de ${ultimo.desfaseDiasComparacion} día(s) en antelación). >100% = reservando más rápido que el ritmo de referencia; <100% = más lento.`;
+  } else {
+    note.textContent = 'No hay curva de referencia de La Farm disponible para este mes todavía.';
+  }
+}
+
+
+document.getElementById('selRev').addEventListener('change', () => {
+  if(!DATA) return;
+  actualizarEtiquetasTipo();
+  renderChart(DATA.comparativaMensual);
+  renderTablaMensual(DATA.comparativaMensual);
+  renderSeguimiento(DATA.seguimientoPresupuesto);
+});
+
+document.getElementById('selDisp').addEventListener('change', () => {
+  const v = document.getElementById('fechaSnapshot').value;
+  const sinCache = document.getElementById('chkNoCache').checked;
+  cargarDatos(v ? inputToDDMMYYYY(v) : null, sinCache);
+});
+
+document.getElementById('btnActualizar').addEventListener('click', () => {
+  const v = document.getElementById('fechaSnapshot').value;
+  const sinCache = document.getElementById('chkNoCache').checked;
+  if(v) cargarDatos(inputToDDMMYYYY(v), sinCache);
+});
+
+const sesionInicial = obtenerCodigoValido_();
+if(sesionInicial.codigo){
+  ocultarLogin();
+  cargarDatos(null, false);
+  cargarInformesDisponibles(sesionInicial.codigo);
+} else {
+  mostrarLogin(sesionInicial.caducado ? 'Tu sesión ha caducado por tiempo de inactividad. Introduce el código de nuevo.' : '');
+}
+
+// ── Informes mensuales descargables (desplegable) ─────────────────────────────
+// Lee la pestaña Informes_Disponibles vía ?accion=listaInformes. Orden: del más reciente al más antiguo
+// (por año y mes del informe, no por fecha de publicación).
+const ORDEN_MESES_ = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+async function cargarInformesDisponibles(codigo){
+  try{
+    const qs = new URLSearchParams();
+    qs.set('codigo', codigo);
+    qs.set('accion', 'listaInformes');
+    const res = await fetch(PROXY_URL + '?' + qs.toString());
+    const data = await res.json();
+    if(!data || !data.ok || !Array.isArray(data.informes) || data.informes.length === 0) return;
+    const clave = inf => Number(inf.anio) * 100 + (ORDEN_MESES_.indexOf(String(inf.mes).trim().toLowerCase()) + 1);
+    const informes = data.informes.slice().sort((a, b) =>
+      (clave(b) - clave(a)) || (new Date(b.fechaPublicacion || 0) - new Date(a.fechaPublicacion || 0)));
+    const sel = document.getElementById('selInforme');
+    sel.innerHTML = informes.map((inf, i) =>
+      `<option value="${inf.url}">${String(inf.mes).trim()} ${inf.anio}${i === 0 ? ' (más reciente)' : ''}</option>`
+    ).join('');
+    document.getElementById('downloadsBox').classList.add('visible');
+  }catch(e){
+    console.warn('No se pudo cargar la lista de informes descargables:', e);
+  }
+}
+
+document.getElementById('btnDescargar').addEventListener('click', () => {
+  const sel = document.getElementById('selInforme');
+  if(sel.value) window.open(sel.value, '_blank');
+});
+</script>
+</body>
+</html>
